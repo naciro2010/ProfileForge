@@ -1,0 +1,6 @@
+node_modules/
+extension/dist/
+backend/build/
+backend/.gradle/
+backend/.gradle-wrapper/
+.DS_Store

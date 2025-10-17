@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: extension/package-lock.json
+      - name: Install dependencies
+        working-directory: extension
+        run: npm install
+      - name: Lint
+        working-directory: extension
+        run: npm run lint --if-present
+      - name: Build
+        working-directory: extension
+        run: npm run build
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-dist
+          path: extension/dist
+
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Grant execute for gradlew
+        working-directory: backend
+        run: chmod +x gradlew
+      - name: Build backend
+        working-directory: backend
+        run: ./gradlew build -x test
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/build/libs/*.jar
+
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Grant execute for gradlew
+        working-directory: backend
+        run: chmod +x gradlew
+      - name: Run tests
+        working-directory: backend
+        run: ./gradlew test

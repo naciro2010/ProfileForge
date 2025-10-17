@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: linkedin-optimizer-backend:latest
+    ports:
+      - "8080:8080"
+    environment:
+      API_KEY: changeme
+      LLM_PROVIDER: ollama
+      LLM_MODEL: llama3:instruct
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_KEEP_ALIVE: "5m"
+
+volumes:
+  ollama-data:
