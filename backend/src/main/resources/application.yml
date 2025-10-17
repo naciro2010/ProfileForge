@@ -1,0 +1,55 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  main:
+    web-application-type: servlet
+
+linkedin-optimizer:
+  llm:
+    provider: ${LLM_PROVIDER:ollama}
+    model: ${LLM_MODEL:llama3:instruct}
+    language: ${DEFAULT_LANGUAGE:fr}
+    cache-ttl: 5m
+  history:
+    enabled: ${HISTORY_ENABLED:false}
+    directory: ${HISTORY_DIRECTORY:history}
+
+api:
+  key: ${API_KEY:changeme}
+  rate-limit:
+    capacity: 30
+    refill-period: PT1M
+
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  base-url: https://openrouter.ai/api/v1/chat/completions
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+
+cors:
+  allowed-origins:
+    - chrome-extension://*
+  allowed-methods:
+    - GET
+    - POST
+  allowed-headers:
+    - '*'
