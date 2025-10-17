@@ -46,11 +46,23 @@ export async function fetchSuggestions(
 }
 
 export async function fetchMarketIntel(params: MarketIntelRequest): Promise<MarketIntelResponse> {
-  return request<MarketIntelResponse>('/api/v1/market-intel', params);
+  const payload = {
+    ...params,
+    seniority: params.seniority?.toUpperCase()
+  };
+
+  return request<MarketIntelResponse>('/api/v1/market-intel', payload);
 }
 
 export async function fetchCompensation(params: CompensationRequest): Promise<CompensationResponse> {
-  return request<CompensationResponse>('/api/v1/compensation', params);
+  const payload = {
+    ...params,
+    seniority: params.seniority?.toUpperCase(),
+    companyType: params.companyType?.toUpperCase(),
+    contractType: params.contractType?.toUpperCase()
+  };
+
+  return request<CompensationResponse>('/api/v1/compensation', payload);
 }
 
 export function deriveKeywords(profile: ProfileSnapshot): string[] {
