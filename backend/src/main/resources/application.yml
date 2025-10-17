@@ -10,11 +10,7 @@ linkedin-optimizer:
   llm:
     provider: ${LLM_PROVIDER:ollama}
     model: ${LLM_MODEL:llama3:instruct}
-    language: ${DEFAULT_LANGUAGE:fr}
-    cache-ttl: 5m
-  history:
-    enabled: ${HISTORY_ENABLED:false}
-    directory: ${HISTORY_DIRECTORY:history}
+    default-language: ${DEFAULT_LANGUAGE:fr}
 
 api:
   key: ${API_KEY:changeme}

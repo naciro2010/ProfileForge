@@ -1,10 +1,8 @@
 package com.acme.linkedinoptimizer.api
 
-import com.acme.linkedinoptimizer.domain.LlmProvider
-import com.acme.linkedinoptimizer.domain.SuggestionContext
-import com.acme.linkedinoptimizer.domain.dto.SuggestionDto
-import com.acme.linkedinoptimizer.domain.dto.SuggestionRequest
-import com.acme.linkedinoptimizer.service.SuggestionService
+import com.acme.linkedinoptimizer.model.SuggestRequest
+import com.acme.linkedinoptimizer.model.SuggestionResponse
+import com.acme.linkedinoptimizer.suggestion.SuggestionService
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -19,18 +17,8 @@ import org.springframework.web.bind.annotation.RestController
 class SuggestController(private val suggestionService: SuggestionService) {
 
     @PostMapping("/suggest")
-    fun suggest(@Valid @RequestBody request: SuggestionRequest): ResponseEntity<SuggestionDto> {
-        val context = if (request.provider != null || request.model != null || request.language != null) {
-            SuggestionContext(
-                provider = runCatching { LlmProvider.valueOf((request.provider ?: "ollama").uppercase()) }
-                    .getOrDefault(LlmProvider.OLLAMA),
-                model = request.model ?: "llama3:instruct",
-                language = request.language ?: "fr"
-            )
-        } else {
-            null
-        }
-        val suggestion = suggestionService.suggest(request.profile, context)
-        return ResponseEntity.ok(suggestion)
+    fun suggest(@Valid @RequestBody request: SuggestRequest): ResponseEntity<SuggestionResponse> {
+        val response = suggestionService.suggest(request.profile, request.targetRole, request.language)
+        return ResponseEntity.ok(response)
     }
 }

@@ -1,8 +1,8 @@
 package com.acme.linkedinoptimizer.api
 
-import com.acme.linkedinoptimizer.model.ScoreRequest
-import com.acme.linkedinoptimizer.model.ScoreResponse
-import com.acme.linkedinoptimizer.score.ScoreService
+import com.acme.linkedinoptimizer.marketintel.MarketIntelService
+import com.acme.linkedinoptimizer.model.MarketIntelRequest
+import com.acme.linkedinoptimizer.model.MarketIntelResponse
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1")
 @Validated
-class ScoreController(private val scoreService: ScoreService) {
+class MarketController(private val marketIntelService: MarketIntelService) {
 
-    @PostMapping("/score")
-    fun score(@Valid @RequestBody request: ScoreRequest): ResponseEntity<ScoreResponse> {
-        val response = scoreService.score(request.profile, request.keywords ?: emptyList())
+    @PostMapping("/market-intel")
+    fun marketIntel(@Valid @RequestBody request: MarketIntelRequest): ResponseEntity<MarketIntelResponse> {
+        val response = marketIntelService.marketIntel(request)
         return ResponseEntity.ok(response)
     }
 }
