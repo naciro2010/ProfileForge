@@ -1,11 +1,12 @@
-# LinkedIn Optimizer (Extension Chrome + Backend Kotlin)
+# LinkedIn Optimizer (Side Panel + Backend Kotlin)
 
-Optimisez un profil LinkedIn à **faible coût** avec une **IA claire et fiable** :
-- extraction **locale** (extension Chrome, Manifest V3),
-- analyse + suggestions via **Kotlin Spring Boot**,
-- LLM **Ollama** en local (par défaut) ou **OpenRouter** (optionnel).
+Optimisez un profil LinkedIn en respectant strictement les CGU :
 
-> ⚠️ Respectez les CGU LinkedIn : l’outil **n’automatise aucune action**. Il lit uniquement la page ouverte par l’utilisateur.
+- **Extension Chrome** Manifest V3 basée sur le **Side Panel** (React + Tailwind),
+- **Backend Kotlin Spring Boot 3** (API score, suggestions, market-intel, compensation),
+- Interfaces **LLM** (Ollama local ou OpenRouter) et agrégation des tendances marché.
+
+> ⚠️ Aucune action automatisée ni modification du DOM LinkedIn. L’utilisateur colle manuellement les textes.
 
 ## Sommaire
 - [Fonctionnement](#fonctionnement)
@@ -15,170 +16,157 @@ Optimisez un profil LinkedIn à **faible coût** avec une **IA claire et fiable*
 - [Utilisation](#utilisation)
 - [Configuration](#configuration)
 - [API](#api)
-- [Sécurité & Vie privée](#sécurité--vie-privée)
-- [Dépannage](#dépannage)
-- [Roadmap](#roadmap)
-- [Licence](#licence)
+- [Conformité & limites](#conformité--limites)
+- [Déploiement low-cost](#déploiement-low-cost)
+- [Données marché & rémunération](#données-marché--rémunération)
+- [Tests](#tests)
 
 ## Fonctionnement
-1. Ouvrez un profil LinkedIn dans Chrome.
-2. Cliquez sur l’icône de l’extension, puis **Analyser ce profil**.
-3. L’extension extrait les sections **visibles** (nom, headline, About, expériences, skills, localisation).
-4. Elle envoie ces données au **backend** qui :
-   - calcule un **score de visibilité** (0–100),
-   - génère des **suggestions prêtes à copier** (headline, About, skills, bullets d’expériences).
-5. Vous copiez/collez les améliorations dans LinkedIn.
+1. Ouvrez un profil LinkedIn dans Chrome ; le side panel apparaît automatiquement.
+2. Collez vos sections (Headline, About, compétences, expériences) dans l’onglet **Score**.
+3. Lancez l’analyse → score 0–100, avertissements et diagnostics.
+4. Onglet **Suggestions** : variantes prêtes à copier (headline, About, skills, bullets) + boutons **Copier**/**Cibler** (scroll vers la section LinkedIn).
+5. Onglet **Marché & Salaire** : tendances recruteurs (Indeed Hiring Lab, SHRM, presse) + estimation salaire/TJM par pays.
 
 ## Architecture
-- **Extension** : TypeScript + React (popup) + Vite + `@crxjs/vite-plugin` + Tailwind.
-- **Backend** : Kotlin + Spring Boot (Web, Validation, Actuator, Springdoc, Micrometer).
-- **LLM** : Ollama (local, par défaut) ou OpenRouter (hébergé).
-- **Sécurité** : API Key simple (`X-API-Key`).
-- **Observabilité** : Actuator (health), Micrometer.
-
 ```
-extension (DOM)
-│ ProfilePayload
-▼
-backend (Kotlin)
-├─ /api/v1/score     → Score heuristique
-├─ /api/v1/suggest   → Suggestions LLM + post-traitements
-└─ /api/v1/target    → Suggestions ciblées (poste/description)
+extension/ (React + Vite + Tailwind)
+└─ Side panel MV3 (tabs Score, Suggestions, Marché & Salaire)
 
+backend/ (Spring Boot 3, Kotlin, Java 21)
+├─ api/              REST controllers (score, suggest, market-intel, compensation)
+├─ suggestion/       Heuristiques + LLM (Ollama/OpenRouter)
+├─ marketintel/      Agrégation + cache Caffeine des tendances publiques
+├─ compensation/     Estimation salaire/TJM (BLS, ONS, APEC, Eurostat)
+├─ score/            Score heuristique déterministe
+└─ util/             Text utils, mapping métiers
 ```
+
+- **Sécurité** : header `X-API-Key`, CORS limité à `chrome-extension://*`, rate limiting Bucket4j.
+- **Observabilité** : Actuator (`/actuator/health`), Prometheus.
+- **Qualité** : ktlint, detekt, tests JUnit/MockMvc, ESLint/Tailwind côté front.
 
 ## Prérequis
-- **Chrome** (MV3).
-- **Node 20+**, **pnpm** ou **npm**.
-- **JDK 21**.
-- **Docker** (si vous utilisez `docker-compose`).
-- (Optionnel) **Ollama** installé en local, avec un modèle (ex. `ollama pull llama3:instruct`).
+- Chrome (Manifest V3).
+- Node.js 20+, npm ou pnpm.
+- JDK 21.
+- Docker (optionnel pour compose + Ollama).
+- (Optionnel) Ollama installé (`ollama pull llama3:instruct`).
 
 ## Installation rapide
-
-### 1) Backend
+### Backend
 ```bash
 cd backend
-cp src/main/resources/application.yml src/main/resources/application.yml.local
-# Éditez: API_KEY, LLM_PROVIDER, LLM_MODEL
-# Generate the Gradle wrapper (ignored in VCS) or rely on a local Gradle installation.
 gradle wrapper
 ./gradlew bootRun
-# ou via Docker:
+# ou via Docker
 docker build -t linkedin-optimizer-backend .
 docker run -p 8080:8080 -e API_KEY=changeme linkedin-optimizer-backend
 ```
 
-### 2) Extension
-
+### Extension
 ```bash
 cd extension
 npm install
 npm run build
-# Chargez le dossier dist/ dans chrome://extensions (Mode développeur → Charger un pack d’extension)
+# charger dist/ dans chrome://extensions (mode développeur)
 ```
 
-### 3) Option docker-compose (backend + ollama)
-
+### Docker Compose (backend + Ollama)
 ```bash
 docker compose up -d
-# le backend écoute sur http://localhost:8080
+# backend sur http://localhost:8080, Ollama sur http://localhost:11434
 ```
 
 ## Utilisation
-
-1. Ouvrez le **profil LinkedIn** à analyser.
-2. Icône de l’extension → **Analyser ce profil**.
-3. L’onglet **Score** affiche la note + les avertissements.
-4. L’onglet **Suggestions** propose :
-
-   * **Headline** ≤ 220 caractères,
-   * **About** (3–5 paragraphes),
-   * **Skills** (10–12),
-   * **Bullets** par expérience (verbes d’action + métriques).
-5. Boutons **Copier** pour coller dans LinkedIn.
+1. Ouvrez `www.linkedin.com` → le side panel se fixe à droite.
+2. Renseignez vos sections dans l’onglet **Score** puis cliquez “Analyser ce profil”.
+3. Passez sur **Suggestions** pour copier les variantes (headline ≤220, About 3–5 paragraphes, skills ≤12, bullets par expérience).
+4. Dans **Marché & Salaire**, renseignez rôle/pays et obtenez les tendances + la fourchette `[low, median, high]` salaire ou TJM.
 
 ## Configuration
+Options de l’extension :
+- URL du backend (`http://localhost:8080` par défaut),
+- `X-API-Key`,
+- Langue des suggestions (`fr`/`en`).
 
-Ouvrez la **page d’options** de l’extension :
-
-* **Backend URL** (ex. `http://localhost:8080`),
-* **API Key** (doit correspondre à `API_KEY` côté backend),
-* **LLM Provider** : `ollama` (défaut) ou `openrouter`,
-* **LLM Model** : ex. `llama3:instruct`, `mistral`.
-* **Langue** : FR ou EN (impacte le prompt).
-
-### Variables d’environnement (backend)
-
-* `API_KEY=changeme`
-* `LLM_PROVIDER=ollama|openrouter` (défaut `ollama`)
-* `LLM_MODEL=llama3:instruct`
-* `OLLAMA_BASE_URL=http://ollama:11434` (défaut `http://localhost:11434`)
-* `OPENROUTER_API_KEY=...` (si `openrouter`)
-* `SERVER_PORT=8080`
+Variables backend (`src/main/resources/application.yml`):
+- `API_KEY` (clé requise),
+- `LLM_PROVIDER=ollama|openrouter`, `LLM_MODEL`,
+- `OLLAMA_BASE_URL`, `OPENROUTER_API_KEY`,
+- `CORS.ALLOWED-ORIGINS` (par défaut `chrome-extension://*`).
 
 ## API
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| POST | `/api/v1/score` | Score 0–100 + breakdown et warnings (entrée : `ScoreRequest`). |
+| POST | `/api/v1/suggest` | Suggestions prêtes à coller (`SuggestionResponse`). |
+| POST | `/api/v1/market-intel` | Top skills + signaux recruteurs agrégés (cache 30 j). |
+| POST | `/api/v1/compensation` | Fourchette salaire ou TJM `[low, median, high]` + justifications. |
+| GET | `/actuator/health` | Healthcheck. |
+| GET | `/swagger-ui.html` | Documentation OpenAPI. |
 
-Swagger UI : `http://localhost:8080/swagger-ui.html`
-
-Exemple `POST /api/v1/suggest` (header `X-API-Key: changeme`) :
-
+### Exemples JSON
+`ScoreRequest`
 ```json
 {
-  "url": "https://www.linkedin.com/in/john-doe",
-  "locale": "fr-FR",
-  "fullName": "John Doe",
-  "headline": "Data Analyst | SQL • Python • Tableau",
-  "about": "Passionné par la data...",
-  "location": "Paris, Île-de-France",
-  "experiences": [
-    { "title": "Data Analyst", "company": "Acme", "dates": "2022–présent", "description": "Tableau, ETL, KPI..." }
-  ],
-  "skills": ["SQL", "Python", "Tableau"],
-  "hasPhoto": true
+  "profile": {
+    "headline": "Senior Data Analyst",
+    "about": "J’aide les scale-ups à piloter leur croissance…",
+    "skills": ["SQL", "Product Analytics"],
+    "experiences": [
+      {
+        "role": "Lead Data Analyst",
+        "company": "Acme",
+        "achievements": "Réduction du churn de 15%"
+      }
+    ],
+    "location": "Paris"
+  }
 }
 ```
 
-Réponse :
-
+`CompensationRequest`
 ```json
 {
-  "headline": "Data Analyst | Transformez vos données en décisions (SQL, Python, Tableau)",
-  "about": "Je transforme des données brutes en insights actionnables...",
-  "skills": ["SQL", "Python", "Tableau", "ETL", "Dashboards", "KPI", "A/B testing", "Snowflake", "dbt", "Power BI", "Data Storytelling"],
-  "experienceBullets": [
-    {
-      "company": "Acme",
-      "title": "Data Analyst",
-      "bullets": [
-        "Construit 12 dashboards orientés décision, adoptés par 8 équipes (+35% d'usage).",
-        "Industrialise des pipelines (dbt) réduisant le temps de calcul de 40%."
-      ]
-    }
-  ]
+  "role": "Product Manager",
+  "country": "FR",
+  "seniority": "SENIOR",
+  "companyType": "ENTERPRISE",
+  "contractType": "PERMANENT"
 }
 ```
 
-## Sécurité & Vie privée
+## Conformité & limites
+- UI side panel : aucune injection DOM, aucune action automatisée.
+- Texte fourni par l’utilisateur ou stocké localement (`chrome.storage.session` chiffré par Chrome).
+- Sources marché/tendances limitées à des publications publiques whitelistes (Indeed Hiring Lab, SHRM, Forbes/Axios…).
+- Pas de scraping massif : seules les données collées par l’utilisateur sont traitées.
 
-* Lecture **locale** du DOM uniquement, pas d’automatisation d’actions.
-* Minimisation des données envoyées au serveur.
-* API protégée par **API Key**.
-* Pas de stockage persistant par défaut (historisation optionnelle).
+## Déploiement low-cost
+**Option A – 100 % gratuit**
+- Oracle Cloud “Always Free” ARM (jusqu’à 4 OCPU / 24 Go) pour héberger le backend Dockerisé.
+- Cloudflare Tunnel pour exposer l’API sans IP publique.
+- Caddy ou Traefik pour TLS automatique.
 
-## Dépannage
+**Option B – VPS low-cost**
+- Hetzner Cloud CX11 (≈5 €/mois), Docker Compose `backend + ollama`, Traefik pour HTTPS.
 
-* Pas de données extraites → attendez le chargement complet de la page ou passez en **vue publique** du profil.
-* 401 côté backend → vérifiez `X-API-Key`.
-* LLM timeouts → ajustez `LLM_MODEL` ou passez à `OpenRouter`.
+**Option C – PaaS budget**
+- Fly.io ou Render Free (pour staging). Vérifier les limites CPU/RAM avant prod.
 
-## Roadmap
+## Données marché & rémunération
+- **USA** : BLS OEWS 2024 (quartiles par SOC + ajustement coût de la vie).
+- **UK** : ONS ASHE 2024 (région + SOC).
+- **France** : APEC 2024 (cadres) + INSEE (salaires/indépendants).
+- **UE** : Eurostat Earnings 2024.
+- **TJM France** : baromètres Hays/BDM 2025, Silkhom 2024.
+- **Tendances recruteurs** : Indeed Hiring Lab 2025, SHRM 2025, articles presse (Forbes, Axios) relayant LinkedIn.
 
-* Mode **Job Targeting** (comparaison JD ↔ profil).
-* Export **PDF** des suggestions.
-* Historique d’analyses.
-* i18n complet.
-
-## Licence
-
-MIT
+## Tests
+```bash
+# backend
+./gradlew test
+# extension
+npm run lint
+```

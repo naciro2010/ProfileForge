@@ -1,48 +1,58 @@
 package com.acme.linkedinoptimizer.api
 
-import com.acme.linkedinoptimizer.domain.dto.ProfileDto
-import com.acme.linkedinoptimizer.domain.dto.ScoreDto
-import com.acme.linkedinoptimizer.service.ScoringService
+import com.acme.linkedinoptimizer.model.ExperienceSnapshot
+import com.acme.linkedinoptimizer.model.ProfileSnapshot
+import com.acme.linkedinoptimizer.model.ScoreRequest
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
-import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.post
 
-@WebMvcTest(controllers = [ScoreController::class])
-@TestPropertySource(properties = ["api.key=changeme"])
-class ScoreControllerTest {
-
-    @Autowired
-    private lateinit var mockMvc: MockMvc
-
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
-
-    @MockBean
-    private lateinit var scoringService: ScoringService
+@SpringBootTest(properties = ["api.key=test-key"])
+@AutoConfigureMockMvc
+class ScoreControllerTest @Autowired constructor(
+    private val mockMvc: MockMvc,
+    private val objectMapper: ObjectMapper
+) {
 
     @Test
-    fun `should return score when API key valid`() {
-        whenever(scoringService.score(any(), any())).thenReturn(ScoreDto(total = 80, breakdown = mapOf("headline" to 10), warnings = emptyList()))
+    fun `should reject missing api key`() {
+        mockMvc.post("/api/v1/score") {
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(ScoreRequest(profile = ProfileSnapshot()))
+        }.andExpect {
+            status { isUnauthorized() }
+        }
+    }
 
-        val profile = ProfileDto(url = "https://linkedin.com/in/test")
-
-        mockMvc.perform(
-            post("/api/v1/score")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("X-API-Key", "changeme")
-                .content(objectMapper.writeValueAsString(profile))
+    @Test
+    fun `should return score when api key provided`() {
+        val request = ScoreRequest(
+            profile = ProfileSnapshot(
+                headline = "Data Analyst",
+                about = "Je transforme les données en décisions.",
+                skills = listOf("SQL"),
+                experiences = listOf(
+                    ExperienceSnapshot(
+                        role = "Analyst",
+                        company = "Acme",
+                        achievements = "Réduction des coûts de 10%",
+                        timeframe = "2023"
+                    )
+                )
+            )
         )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.total").value(80))
+
+        mockMvc.post("/api/v1/score") {
+            header("X-API-Key", "test-key")
+            contentType = MediaType.APPLICATION_JSON
+            content = objectMapper.writeValueAsString(request)
+        }.andExpect {
+            status { isOk() }
+        }
     }
 }

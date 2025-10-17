@@ -1,8 +1,8 @@
 package com.acme.linkedinoptimizer.api
 
-import com.acme.linkedinoptimizer.model.ScoreRequest
-import com.acme.linkedinoptimizer.model.ScoreResponse
-import com.acme.linkedinoptimizer.score.ScoreService
+import com.acme.linkedinoptimizer.compensation.CompensationService
+import com.acme.linkedinoptimizer.model.CompensationRequest
+import com.acme.linkedinoptimizer.model.CompensationResponse
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1")
 @Validated
-class ScoreController(private val scoreService: ScoreService) {
+class CompensationController(private val compensationService: CompensationService) {
 
-    @PostMapping("/score")
-    fun score(@Valid @RequestBody request: ScoreRequest): ResponseEntity<ScoreResponse> {
-        val response = scoreService.score(request.profile, request.keywords ?: emptyList())
+    @PostMapping("/compensation")
+    fun estimate(@Valid @RequestBody request: CompensationRequest): ResponseEntity<CompensationResponse> {
+        val response = compensationService.estimate(request)
         return ResponseEntity.ok(response)
     }
 }
