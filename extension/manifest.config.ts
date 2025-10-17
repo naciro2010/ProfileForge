@@ -9,8 +9,8 @@ export default defineManifest({
   action: {
     default_title: 'Ouvrir LinkedIn Optimizer'
   },
-  permissions: ['sidePanel', 'activeTab', 'storage', 'scripting'],
-  host_permissions: [],
+  permissions: ['sidePanel', 'activeTab', 'storage', 'scripting', 'tabs'],
+  host_permissions: ['https://www.linkedin.com/*'],
   background: {
     service_worker: 'src/background.ts',
     type: 'module'
